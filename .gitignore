@@ -1,0 +1,58 @@
+# -----------------------------
+# OS-generated files
+# -----------------------------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# -----------------------------
+# Editor / IDE settings
+# -----------------------------
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# -----------------------------
+# Logs / temp
+# -----------------------------
+*.log
+*.bak
+*.tmp
+*.swp
+*.swo
+
+# -----------------------------
+# ColdFusion specific
+# (depends on server config)
+# -----------------------------
+cfclasses/
+WEB-INF/cfusion/
+WEB-INF/neo-*.xml
+jrun4/
+cfusion.ear/
+cfusion.war/
+cfusion_tmp/
+cfusion_log/
+cftags/
+cfusion/
+
+# -----------------------------
+# Java / libs (if used in CF app)
+# -----------------------------
+*.jar
+lib/
+classes/
+
+# -----------------------------
+# Node / frontend junk (if you also have JS frontend)
+# -----------------------------
+node_modules/
+dist/
+build/
+
+# -----------------------------
+# Misc
+# -----------------------------
+.env
