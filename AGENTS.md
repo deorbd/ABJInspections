@@ -1,0 +1,1 @@
+This PR introduces an AGENTS.md file at the root of the repository. It defines project rules for working in ABJInspections (base branch, PR workflow, required build check, ColdFusion as the primary language, testing expectations, and security guidelines).
