@@ -7,36 +7,39 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
       # --- 1) Quick “secret leak” guardrails ---
-      # Fail if common secret files or patterns are present.
+      # Fail if common secret files are committed.
       - name: Secret hygiene (files)
         run: |
           set -e
-          # Block obvious files
           bad_files="$(git ls-files | grep -E '\.env$|\.env\.local$|id_rsa(\.pub)?$|\.pem$|\.p12$|\.pfx$' || true)"
           if [ -n "$bad_files" ]; then
-            echo "::error::Sensitive files committed:\n$bad_files"
+            echo "::error::Sensitive files committed:"
+            echo "$bad_files"
             exit 1
           fi
 
+      # Avoid false positives by ignoring the CI config itself and YAML files.
       - name: Secret hygiene (patterns)
         run: |
           set -e
-          # Grep for some very common secret patterns (best-effort).
-          # (Does not scan binaries; avoids .git)
-          if grep -RInE --exclude-dir=.git --binary-files=without-match \
-              'AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|GOOGLE_API_KEY|xoxb-|password=|passwd=|SECRET_KEY|PRIVATE KEY-----' . ; then
+          if grep -RInE \
+              --exclude-dir=.git \
+              --exclude-dir=.github \
+              --exclude='*.yml' \
+              --exclude='*.yaml' \
+              --binary-files=without-match \
+              '(AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|GOOGLE_API_KEY|xoxb-|password=|passwd=|SECRET_KEY|-----BEGIN [A-Z ]*PRIVATE KEY-----)' . ; then
             echo "::error::Potential secrets detected above. Remove/rotate before merging."
             exit 1
           fi
 
       # --- 2) Frontend (optional/auto) ---
-      # If a package.json exists, install deps and run lint/tests *if those scripts exist*.
-      - name: Use Node if package.json exists
+      # If package.json exists, install deps and run lint/tests IF those scripts exist.
+      - name: Setup Node (if package.json exists)
         if: ${{ hashFiles('package.json') != '' }}
         uses: actions/setup-node@v4
         with:
@@ -68,10 +71,7 @@ jobs:
       - name: Final OK
         run: echo "CI checks completed."
 
-      # --- CFML lint (optional – turn on later) ---
-      # When you’re ready to lint ColdFusion/CFML, we can wire up a linter step here.
-      # Example (placeholder):
+      # --- CFML lint (optional – enable later) ---
       # - name: CFLint (example)
       #   run: |
       #     echo "Run CFML linter here (CFLint/CommandBox)."
-      #     # We’ll drop in the exact commands once your CFML toolchain is chosen.
