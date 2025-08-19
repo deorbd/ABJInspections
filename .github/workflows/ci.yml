@@ -3,10 +3,75 @@ on:
   pull_request:
   push:
     branches: [ main ]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Trivial check
-        run: echo "OK"
+
+      # --- 1) Quick “secret leak” guardrails ---
+      # Fail if common secret files are committed.
+      - name: Secret hygiene (files)
+        run: |
+          set -e
+          bad_files="$(git ls-files | grep -E '\.env$|\.env\.local$|id_rsa(\.pub)?$|\.pem$|\.p12$|\.pfx$' || true)"
+          if [ -n "$bad_files" ]; then
+            echo "::error::Sensitive files committed:"
+            echo "$bad_files"
+            exit 1
+          fi
+
+      # Avoid false positives by ignoring the CI config itself and YAML files.
+      - name: Secret hygiene (patterns)
+        run: |
+          set -e
+          if grep -RInE \
+              --exclude-dir=.git \
+              --exclude-dir=.github \
+              --exclude='*.yml' \
+              --exclude='*.yaml' \
+              --binary-files=without-match \
+              '(AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|GOOGLE_API_KEY|xoxb-|password=|passwd=|SECRET_KEY|-----BEGIN [A-Z ]*PRIVATE KEY-----)' . ; then
+            echo "::error::Potential secrets detected above. Remove/rotate before merging."
+            exit 1
+          fi
+
+      # --- 2) Frontend (optional/auto) ---
+      # If package.json exists, install deps and run lint/tests IF those scripts exist.
+      - name: Setup Node (if package.json exists)
+        if: ${{ hashFiles('package.json') != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: npm ci (if package.json)
+        if: ${{ hashFiles('package.json') != '' }}
+        run: npm ci
+
+      - name: npm run lint (if defined)
+        if: ${{ hashFiles('package.json') != '' }}
+        run: |
+          if npm run | grep -qE '^ *lint'; then
+            npm run lint
+          else
+            echo "No lint script; skipping."
+          fi
+
+      - name: npm test (if defined)
+        if: ${{ hashFiles('package.json') != '' }}
+        run: |
+          if npm run | grep -qE '^ *test'; then
+            npm test --silent --if-present
+          else
+            echo "No test script; skipping."
+          fi
+
+      # --- 3) Placeholder success (so the job stays green if nothing else runs) ---
+      - name: Final OK
+        run: echo "CI checks completed."
+
+      # --- CFML lint (optional – enable later) ---
+      # - name: CFLint (example)
+      #   run: |
+      #     echo "Run CFML linter here (CFLint/CommandBox)."
